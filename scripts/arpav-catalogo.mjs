@@ -34,6 +34,9 @@ async function scarica() {
 }
 
 const xml = await scarica();
+console.log('Inizio file (struttura): ' + xml.replace(/<DATI\b[\s\S]*?<\/DATI>/g, '<DATI…/>').slice(0, 3500).replace(/\s+/g, ' '));
+const esterni = {}; for (const m of xml.replace(/<SENSORE>[\s\S]*?<\/SENSORE>/g, '').matchAll(/<([A-Za-z_][A-Za-z0-9_]*)[\s>]/g)) esterni[m[1]] = (esterni[m[1]] || 0) + 1;
+console.log('Tag fuori dai sensori: ' + JSON.stringify(esterni));
 const blocchi = [];
 for (const m of xml.matchAll(/<SENSORE>([\s\S]*?)<\/SENSORE>/g)) {
   const senzaDati = m[1].replace(/<DATI\b[\s\S]*?<\/DATI>/g, '');
