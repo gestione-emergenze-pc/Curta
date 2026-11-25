@@ -354,6 +354,20 @@ def pulisci_storico(archivio, giorni=GIORNI_STORICO):
         print("Pulizia storico non riuscita:", e)
 
 
+def sito_non_funziona(e):
+    """True se l'errore e' del sito della Regione (nessuna risposta, timeout, errore 5xx) e non dello script: in quel caso non si
+    scrive su Telegram, il guasto e' temporaneo e non c'e' nulla da fare. Gli altri errori (pagina cambiata, 403, 404...) si segnalano."""
+    try:
+        import requests
+        if isinstance(e, (requests.exceptions.ConnectionError, requests.exceptions.Timeout)):
+            return True
+        if isinstance(e, requests.exceptions.HTTPError) and getattr(e, "response", None) is not None:
+            return e.response.status_code >= 500
+    except Exception:
+        pass
+    return False
+
+
 def esegui(archivio, invia=None):
     invia = invia or invia_avviso
     ora = datetime.now(TZ).isoformat()
@@ -376,7 +390,9 @@ def esegui(archivio, invia=None):
         n = int((archivio.leggi("cfd_stato/monitor") or {}).get("erroriConsecutivi", 0)) + 1
         archivio.scrivi("cfd_stato/monitor", {"ultimoControllo": ora, "esito": "errore", "messaggio": str(e)[:300], "erroriConsecutivi": n})
         print("ERRORE:", e)
-        if n == 3:
+        if sito_non_funziona(e):
+            print("Il sito della Regione non funziona: nessun messaggio su Telegram.")
+        elif n == 3:
             invia(f"⚠️ Monitoraggio allerte: 3 controlli consecutivi falliti ({str(e)[:150]}).\nVerifica a mano: {CFD_URL}")
         return 1
 
